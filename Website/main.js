@@ -1,19 +1,25 @@
-const editMode = {
-    Connect: Symbol("Connect"),
-    Move: Symbol("Move"),
-    Cursor: Symbol("Cursor")
-}
-
-/* <svg canvas>
- *  <g graph>
- *      <g chip>...</g>
- *  </g>
- * </svg>
- */
-
-var currentMode = editMode.Move
 var selectedChip, offset, transform;
 var svg = null
+
+var currentSize = 1
+
+function zoomIn(evt) {
+    if (!currentSize > 2) {
+        currentSize += 0.25
+        updateSize()
+    }
+}
+
+function zoomOut(evt) {
+    if (!currentSize < 0.50) {
+        currentSize -= 0.25
+        updateSize()
+    }
+}
+
+function updateSize() {
+    
+}
 
 function getMousePosition(evt) {
     var CTM = svg.getScreenCTM();
@@ -30,38 +36,44 @@ function changeMode(newMode) {
     }
 }
 
-function translateOffset() {
-    
+function translateOffset(el) {
+    var transforms = el.transform.baseVal;
+    // Ensure the first transform is a translate transform
+    if (transforms.length === 0 || transforms.getItem(0).type !== SVGTransform.SVG_TRANSFORM_TRANSLATE) {
+    // Create an transform that translates by (0, 0)
+    var translate = svg.createSVGTransform();
+        translate.setTranslate(0, 0);
+        // Add the translation to the front of the transforms list
+        el.transform.baseVal.insertItemBefore(translate, 0);
+    }
+    return transforms
 }
 
 function dragStart(evt) {
-    console.log("Drag started.")
-    switch (currentMode) {
-        case editMode.Connect:
-            break;
-        case editMode.Move:
-            if (evt.target.parentElement.classList.contains("draggable")) {
-                console.log("Drag start success.")
-                selectedChip = evt.target.parentElement
-                
+    //console.log(evt.target)
+    evt.preventDefault()
+    switch (evt.button) {
+        case 0:
+            if (evt.target.classList.contains("grabBase")) {
+                selectedChip = evt.target.parentElement;
+    
                 offset = getMousePosition(evt);
-                
-                var transforms = selectedChip.transform.baseVal;
-                // Ensure the first transform is a translate transform
-                if (transforms.length === 0 || transforms.getItem(0).type !== SVGTransform.SVG_TRANSFORM_TRANSLATE) {
-                    // Create an transform that translates by (0, 0)
-                    var translate = svg.createSVGTransform();
-                    translate.setTranslate(0, 0);
-                    // Add the translation to the front of the transforms list
-                    selectedChip.transform.baseVal.insertItemBefore(translate, 0);
-                }
-                // Get initial translation amount
-                transform = transforms.getItem(0);
+    
+                transform = translateOffset(selectedChip).getItem(0);
                 offset.x -= transform.matrix.e;
                 offset.y -= transform.matrix.f;
             }
+            else {
+            }
             break;
-        case editMode.Cursor:
+        case 1:
+            selectedChip = document.getElementById("graphGroup");
+    
+            offset = getMousePosition(evt);
+    
+            transform = translateOffset(selectedChip).getItem(0);
+            offset.x -= transform.matrix.e;
+            offset.y -= transform.matrix.f;
             break;
     }
 }
@@ -69,30 +81,13 @@ function dragStart(evt) {
 function dragMove(evt) {
     evt.preventDefault()
     var mouse = getMousePosition(evt)
-    switch (currentMode) {
-        case editMode.Connect:
-            break;
-        case editMode.Move:
-            if (selectedChip) {
-                console.log("A")
-                transform.setTranslate(mouse.x - offset.x, mouse.y - offset.y)
-            }
-            break;
-        case editMode.Cursor:
-            break;
+    if (selectedChip) {
+        transform.setTranslate(mouse.x - offset.x, mouse.y - offset.y)
     }
 }
 
 function dragEnd(evt) {
-    switch (currentMode) {
-        case editMode.Connect:
-            break;
-        case editMode.Move:
-            selectedChip = null
-            break;
-        case editMode.Cursor:
-            break;
-    }
+    selectedChip = null
 }
 
 function makeDraggable(evt) {
