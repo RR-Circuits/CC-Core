@@ -1,0 +1,31 @@
+.draggable {
+    cursor: move;
+}
+
+.palette {
+    width: "20%";
+    float: left;
+}
+
+.palette ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.palette ul li {
+    margin: 1px 0;
+    border: 1px solid #999
+}
+
+.palette li a {
+    
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #1b1b1d;
+    background-image: radial-gradient(circle at 1px 1px, #3f3f3f 1px, transparent 0);
+    background-size: 20px 20px;
+}
