@@ -6,6 +6,10 @@ var bgDragActive = false
 var svg = null
 var pt = null
 
+var bgOldMousePos = new Vector2(0, 0)
+
+var oldGraphPos = new Vector2(0, 0)
+
 var bgOffset = new Vector2(0, 0)
 var selectedOffset = new Vector2(0, 0)
 
@@ -28,23 +32,16 @@ var selectedTransform = {
 }
 
 // Get point in global SVG space
-function screenMousePosition(evt){
+function swreenMousePosition(evt){
   pt.x = evt.clientX; pt.y = evt.clientY;
 
   let mtrx = pt.matrixTransform(svg.getScreenCTM().inverse())
   return new Vector2(mtrx.x, mtrx.y);
 }
 
-function setTransform(isBG, [scaleX, scaleY], [translateX, translateY]) {
-    let targetTransform = isBG ? mainGTransform : selectedTransform
-    let scl = targetTransform.scale
-    let trn = targetTransform.translate
-
-    scl.x = scaleX ? scaleX : scl.x
-    scl.y = scaleY ? scaleY : scl.y
-
-    trn.x = translateX ? translateX : trn.x
-    trn.y = translateY ? translateY : trn.y
+function screenMousePosition(evt) {
+    var CTM = svg.getScreenCTM();
+    return new Vector2((evt.clientX - CTM.e) / CTM.a, (evt.clientY - CTM.f) / CTM.d)
 }
 
 function applyTransform(target, isBG) {
@@ -81,15 +78,11 @@ function updateSize() {
 
 var currentControlMode = ControlMode.Default
 
-function swreenMousePosition(evt) {
-    return new Vector2(evt.clientX, evt.clientY)
-}
-
-function changeBG(deltaX, deltaY) {
+function changeBG(bgPos) {
     let r = document.querySelector(":root")
 
-    r.style.setProperty("--bg-x", deltaX + "px")
-    r.style.setProperty("--bg-y", deltaY + "px")
+    r.style.setProperty("--bg-x", bgPos.x + "px")
+    r.style.setProperty("--bg-y", bgPos.y + "px")
 
     r.style.setProperty("--bg-spacing", 20 * zoomAmount + "px")
     r.style.setProperty("--bg-dotsize", zoomAmount + "px")
@@ -98,7 +91,7 @@ function changeBG(deltaX, deltaY) {
 function dragStart(evt) {
     if (currentControlMode == ControlMode.Mobile) return;
     evt.preventDefault()
-    let mouse = screenMousePosition(evt)
+    let mouse = bgOldMousePos = screenMousePosition(evt)
     
     switch (evt.button) {
         case MouseButtons.Primary:
@@ -107,12 +100,14 @@ function dragStart(evt) {
                 selectedChip = headGraph.Nodes[ChipEl.id]
                 
                 let ChipPos = selectedChip.Position
-                selectedOffset = ChipPos.Subtract(mouse)
+                selectedOffset = mouse.Subtract(ChipPos)
             }
             break;
         case MouseButtons.Middle:
             bgDragActive = true
-            bgOffset = headGraph.Position.Subtract(mouse)
+            oldGraphPos = headGraph.Position
+            bgOffset = mouse.Subtract(headGraph.Position)
+            //console.log(`Background Offset: ${bgOffset}`)
             break;
     }
 }
@@ -126,36 +121,49 @@ function scrolling(evt) {
 // dragging functions
 
 function dragBackground(evt) {
-    console.log(headGraph.Position)
-    headGraph.Position = bgOffset.Add(screenMousePosition(evt))
+    let newMousePos = screenMousePosition(evt)
+    headGraph.Position = newMousePos.Subtract(bgOffset)
 
-    SVGGroup.setAttribute("transform", `translate(${headGraph.Position.x / 1000}, ${headGraph.Position.y / 1000}) scale(${headGraph.Size.x}, ${headGraph.Size.y})`)
+    SVGGroup.setAttribute("transform", `translate(${headGraph.Position.x}, ${headGraph.Position.y}) scale(${headGraph.Size.x}, ${headGraph.Size.y})`)
 }
 
 function dragChip(evt) {
-    
+    if (!selectedChip) return;
+    let chipElem = document.getElementById(selectedChip.id)
+    SVGGroup.appendChild(chipElem)
+
+    //calculations
+    let newMousePos = screenMousePosition(evt)
+    selectedChip.Position = newMousePos.Subtract(selectedOffset.Subtract(bgDragActive ? oldGraphPos.Subtract(headGraph.Position) : new Vector2(0, 0)))
+
+    //transformation
+    chipElem.setAttribute("transform", `translate(${selectedChip.Position.x}, ${selectedChip.Position.y}) scale(${headGraph.Size.x}, ${headGraph.Size.y})`)
 }
 //
 
 function dragMove(evt) {
     evt.preventDefault()
-    if (evt.buttons == 1) { // primary pressed
+    if (evt.buttons == 1 || evt.buttons == 5) { // primary pressed
         dragChip(evt)
-    } else if (evt.buttons == 4) { // middle pressed
-        dragBackground(evt)
-    } else if (evt.buttons == 5) { // both pressed
-        dragChip(evt)
+    }
+    if (evt.buttons == 4 || evt.buttons == 5) { // middle pressed
         dragBackground(evt)
     }
+
+    changeBG(headGraph.Position)
 }
 
 function dragEnd(evt) {
-    if (evt.buttons == 0) { // no buttons pressed
+    if (evt.buttons == 1 || evt.buttons == 0) {
         bgDragActive = false
-        selectedChip = null
-    } else if (evt.buttons == 1) { // only primary pressed
-        bgDragActive = false
-    } else if (evt.buttons == 4) { // only middle pressed
+        bgOffset = new Vector2(0, 0)
+        oldGraphPos = headGraph.Position
+
+        if (selectedChip) {
+            selectedOffset = screenMousePosition(evt).Subtract(selectedChip.Position)
+        }
+    }
+    if (evt.buttons == 4 || evt.buttons == 0) {
         selectedChip = null
     }
 }
@@ -164,7 +172,7 @@ function makeDraggable() {
     SVGGroup = document.getElementById("graphGroup")
 
     //temp
-    let testNode1 = new Node([0, 0], "bad6a57b-2af8-4526-8caa-e07476da4a5b", [[
+    let testNode1 = new Node(new Vector2(0, 0), "bad6a57b-2af8-4526-8caa-e07476da4a5b", [[
         //Inputs here
         new Connector("exec", false, false),
         new Connector("player", false, false),
@@ -174,7 +182,7 @@ function makeDraggable() {
         new Connector("exec", false, false)
     ]])
     
-    let testNode2 = new Node([0, 0], "bad6a57b-2af8-4526-8caa-e07476da4a5b", [[
+    let testNode2 = new Node(new Vector2(0, 0), "bad6a57b-2af8-4526-8caa-e07476da4a5b", [[
         //Inputs here
         new Connector("exec", false, false),
         new Connector("player", false, false),

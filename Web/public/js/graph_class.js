@@ -1,3 +1,5 @@
+const FormatVersion = 1
+
 class Vector2 {
     constructor(x, y) {
         this.x = x ?? 0
@@ -13,7 +15,7 @@ class Vector2 {
     }
 
     Subtract(b) {
-        return new Vector2(this.x + b.x, this.y + b.y)
+        return new Vector2(this.x - b.x, this.y - b.y)
     }
 
     rAdd(b) {
@@ -79,6 +81,29 @@ class Graph {
             delete this.Nodes[nodeOrId]
         } else {
             delete this.Nodes[nodeOrId.id]
+        }
+    }
+
+    GenerateGraph(GraphSource, ChipSource) {
+        this.Nodes = {}
+        let GraphSettings = GraphSource.GraphSettings
+
+        if (GraphSettings) {
+            this.Position = new Vector2(GraphSettings.Position[0], GraphSettings.Position[1])
+            this.Size = new Vector2(GraphSettings.Zoom, GraphSettings.Zoom)
+        }
+
+        let GraphNodes = GraphSource.Nodes
+        for (const [chipID, ChipContents] of Object.entries(GraphNodes)) {
+            this.Nodes[chipID] = new Node()
+        }
+    }
+
+    GenerateFile() {
+        
+        return {
+            Format: FormatVersion,
+            Nodes: {}
         }
     }
 }
