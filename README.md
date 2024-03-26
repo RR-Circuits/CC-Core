@@ -11,9 +11,9 @@ The core libraries that will power the Circuit Creation network.
 # Porgression:
 1. Get a basic HTML layout with a decent stylesheet
 1. Get element dragging to work
-1. Get classes to work **<-- We are here**
-1. Add serialization/deserialization **<-- Also working on this**
-1. Add wiring
+1. Get classes to work
+1. Add serialization/deserialization **<-- We are here**
+1. Add wiring **<-- Also working on this**
 1. Add image exporting
 1. First Beta test
 1. Make wiring more advanced (better union/list/unionlist support)
